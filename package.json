@@ -1,0 +1,25 @@
+{
+  "name": "multer-gcs",
+  "version": "1.0.0",
+  "description": "Streaming multer storage engine for Google Cloud Storage",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jahmed76/multer-gcs.git"
+  },
+  "keywords": [
+    "multer",
+    "gcs",
+    "google"
+  ],
+  "author": "jahmed76",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jahmed76/multer-gcs/issues"
+  },
+  "homepage": "https://github.com/jahmed76/multer-gcs#readme",
+  "dependencies": {
+    "gcloud": "^0.36.0"
+  },
+  "devDependencies": {}
+}
