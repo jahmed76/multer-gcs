@@ -10,7 +10,7 @@ Please read official documentation at https://googlecloudplatform.github.io/gclo
 	npm install multer-gcs
 
 ## Usage
-
+```javascript
 var multer = require( 'multer' );
 var gcs = require( 'multer-gcs' );
 var storage = gcs({
@@ -34,9 +34,11 @@ app.post( '/upload', gcsUpload.single( 'file' ), function( req, res, next ) {
 });
 ```
 You can also use environment variables for multer-gcs parameters.
+```
 GCS_BUCKET='bucket-name'
 GCLOUD_PROJECT='dummy-project'
 GCS_KEYFILE='/path/to/keyfile.json'
+```
 ## License
 
 [MIT](LICENSE)
