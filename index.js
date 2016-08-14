@@ -54,13 +54,13 @@ GCStorage.prototype._handleFile = function (req, file, cb) {
 	var self = this;
 	self.getDestination( req, file, function( err, destination ) {
 
-		if ( err ) {
-			return cb( err );
+		if (err) {
+			return cb(err);
 		}
 		
 		
 		self.getFilename( req, file, function( err, filename ) {
-			if ( err ) {
+			if (err) {
 				return cb( err );
 			}
 			
@@ -84,7 +84,7 @@ GCStorage.prototype._handleFile = function (req, file, cb) {
 			})
 			.on('finish', function(file) {
 			    return cb(null , {
-			    	path : 'https://' + self.options.bucket + '.storage.googleapis.com/' + filename ,
+			    	path : 'https://storage.googleapis.com/' + self.options.bucket + '/' + filename,
 			    	filename : filename
 			    });
 			});
