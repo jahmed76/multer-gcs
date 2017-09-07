@@ -1,4 +1,4 @@
-# Multer-Storage-S3
+# Multer-Storage-GCS
 Google Cloud Storage Multer Storage Engine
 
 Multer Storage Engine that uses Google Cloud Storage as a storage system.
@@ -15,9 +15,7 @@ var multer = require( 'multer' );
 var gcs = require( 'multer-gcs' );
 var storage = gcs({
 	filename    : function( req, file, cb ) {
-		
 		cb( null, file.fieldname + '-' + Date.now() );
-		
 	},
 	bucket      : 'bucket-name', // Required : bucket name to upload
 	projectId      : 'dummy-project', // Required : Google project ID
