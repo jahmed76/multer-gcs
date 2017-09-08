@@ -20,7 +20,8 @@ var storage = gcs({
 	bucket      : 'bucket-name', // Required : bucket name to upload
 	projectId      : 'dummy-project', // Required : Google project ID
 	keyFilename : '/path/to/keyfile.json', // Required : JSON credentials file for Google Cloud Storage
-	acl : 'publicread' // Optional : Defaults to private
+	acl : 'publicRead' // Optional : Defaults to projectPrivate. See options in the link below:
+	//https://cloud.google.com/storage/docs/access-control/lists
 });
 
 var gcsUpload = multer({ storage: storage });

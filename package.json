@@ -1,6 +1,6 @@
 {
   "name": "multer-gcs",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Streaming multer storage engine for Google Cloud Storage",
   "main": "index.js",
   "repository": {

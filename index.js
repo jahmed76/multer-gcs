@@ -1,6 +1,8 @@
 var gcloud = require('gcloud');
 var crypto = require( 'crypto' );
-var fs = require('fs')
+var fs = require('fs');
+var mime = require('mime-types');
+var path = require('path');
 
 function getFilename( req, file, cb ) {
 
@@ -52,22 +54,37 @@ GCStorage.prototype._handleFile = function (req, file, cb) {
 	var self = this;
 	self.getDestination( req, file, function( err, destination ) {
 
-		if ( err ) {
-			return cb( err );
+		if (err) {
+			return cb(err);
 		}
-
+		
+		
 		self.getFilename( req, file, function( err, filename ) {
-			if ( err ) {
+			if (err) {
 				return cb( err );
 			}
+			
+			//Set options for upload
+			var new_options = {
+				metadata: {}
+			}
+			
+			//Add predefined ACL
+			new_options.predefinedAcl = self.options.acl || 'projectPrivate';
+			
+			//Set mime type
+			var contentType = mime.contentType(path.basename(filename));
+			new_options.metadata.contentType = contentType;
+			
 			var gcFile = self.gcsBucket.file(filename);
-			file.stream.pipe(gcFile.createWriteStream({predefinedAcl : self.options.acl || 'private'}))
+			
+			file.stream.pipe(gcFile.createWriteStream(new_options))
 			.on('error', function(err) {
 				return cb(err);
 			})
 			.on('finish', function(file) {
 			    return cb(null , {
-			    	path : 'https://' + self.options.bucket + '.storage.googleapis.com/' + filename ,
+			    	path : 'https://storage.googleapis.com/' + self.options.bucket + '/' + filename,
 			    	filename : filename
 			    });
 			});
