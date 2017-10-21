@@ -1,27 +1,60 @@
-var gcloud = require('gcloud');
+var gcloud = require('google-cloud');
 var crypto = require( 'crypto' );
+let peek = require('buffer-peek-stream')
+let fileTypeCheck = require('file-type')
 var fs = require('fs')
 
+
 function getFilename( req, file, cb ) {
-
 	crypto.pseudoRandomBytes( 16, function ( err, raw ) {
-		cb( err, err ? undefined : raw.toString( 'hex' ) );
+		cb( err, err ? undefined : raw.toString( 'hex' ));
 	});
-
 }
 
 function getDestination( req, file, cb ) {
 	cb( null, '' );
 }
 
+function preProcess(req, file, cb){
+	cb(null, '')
+}
+
 function GCStorage (opts) {
-  	this.getFilename = ( opts.filename || getFilename );
+	this.getFilename = ( opts.filename || getFilename );
 
 	if ( 'string' === typeof opts.destination ) {
 		this.getDestination = function( $0, $1, cb ) { cb( null, opts.destination ); }
 	} else {
 		this.getDestination = ( opts.destination || getDestination );
 	}
+
+	this.preProcess = (opts.preProcess || preProcess)
+
+	this.getMimetype = function(req, file){
+
+		return new Promise(function(resolve, reject){
+			peek(file.stream, 4100, function(err, data, outStream){
+        inspectData = fileTypeCheck(data)
+        console.log('peeking')
+
+
+				if (inspectData) {
+          file.originalMimetype = file.mimetype
+          file.extension = inspectData.ext
+          file.mimetype = inspectData.mime
+          file.outStream = outStream // Cannot override file.stream - Don't know why
+        }
+
+        if (err){
+        	reject(err)
+				} else {
+        	resolve(true)
+				}
+
+      })
+		})
+	}
+
 
 	opts.bucket = ( opts.bucket || process.env.GCS_BUCKET || null );
 	opts.projectId = opts.projectId || process.env.GCLOUD_PROJECT || null;
@@ -50,31 +83,53 @@ function GCStorage (opts) {
 
 GCStorage.prototype._handleFile = function (req, file, cb) {
 	var self = this;
-	self.getDestination( req, file, function( err, destination ) {
 
-		if ( err ) {
-			return cb( err );
-		}
+  self.getMimetype(req, file)
+	.then(function(){
 
-		self.getFilename( req, file, function( err, filename ) {
-			if ( err ) {
-				return cb( err );
+			self.preProcess(req, file, function (err) {
+
+			if (err) {
+				return cb(err)
 			}
-			var gcFile = self.gcsBucket.file(filename);
-			file.stream.pipe(gcFile.createWriteStream({predefinedAcl : self.options.acl || 'private'}))
-			.on('error', function(err) {
-				return cb(err);
-			})
-			.on('finish', function(file) {
-			    return cb(null , {
-			    	path : 'https://' + self.options.bucket + '.storage.googleapis.com/' + filename ,
-			    	filename : filename
-			    });
-			});
-			
-		});
 
-	});
+			self.getDestination(req, file, function (err, destination) {
+				if (err) {
+					return cb(err);
+				}
+
+				self.getFilename(req, file, function (err, filename) {
+					filename += file.extension ? `.${file.extension}` : ''
+					if (err) {
+						return cb(err);
+					}
+					var gcFile = self.gcsBucket.file(filename);
+					cwsOpts = {
+						predefinedAcl: self.options.acl || 'private',
+						metadata: {
+							contentType: file.mimetype
+						}
+					}
+
+					file.outStream.pipe(gcFile.createWriteStream(cwsOpts)).
+						on('error', function (err) {
+							return cb(err);
+						}).
+						on('finish', function (file) {
+							return cb(null, {
+								path: 'https://' + self.options.bucket +
+								'.storage.googleapis.com/' + filename,
+								filename: filename
+							});
+						});
+
+				});
+
+			});
+		});
+	}).catch(function(err){
+		return cb(err)
+	})
 }
 
 GCStorage.prototype._removeFile = function _removeFile( req, file, cb ) {
