@@ -1,9 +1,7 @@
-var gcloud = require('google-cloud');
-var crypto = require( 'crypto' );
+let gcloud = require('google-cloud');
+let crypto = require( 'crypto' );
 let peek = require('buffer-peek-stream')
 let fileTypeCheck = require('file-type')
-var fs = require('fs')
-
 
 function getFilename( req, file, cb ) {
 	crypto.pseudoRandomBytes( 16, function ( err, raw ) {
@@ -29,32 +27,6 @@ function GCStorage (opts) {
 	}
 
 	this.preProcess = (opts.preProcess || preProcess)
-
-	this.getMimetype = function(req, file){
-
-		return new Promise(function(resolve, reject){
-			peek(file.stream, 4100, function(err, data, outStream){
-        inspectData = fileTypeCheck(data)
-        console.log('peeking')
-
-
-				if (inspectData) {
-          file.originalMimetype = file.mimetype
-          file.extension = inspectData.ext
-          file.mimetype = inspectData.mime
-          file.outStream = outStream // Cannot override file.stream - Don't know why
-        }
-
-        if (err){
-        	reject(err)
-				} else {
-        	resolve(true)
-				}
-
-      })
-		})
-	}
-
 
 	opts.bucket = ( opts.bucket || process.env.GCS_BUCKET || null );
 	opts.projectId = opts.projectId || process.env.GCLOUD_PROJECT || null;
@@ -82,7 +54,7 @@ function GCStorage (opts) {
 }
 
 GCStorage.prototype._handleFile = function (req, file, cb) {
-	var self = this;
+	let self = this;
 
   self.getMimetype(req, file)
 	.then(function(){
@@ -103,7 +75,7 @@ GCStorage.prototype._handleFile = function (req, file, cb) {
 					if (err) {
 						return cb(err);
 					}
-					var gcFile = self.gcsBucket.file(filename);
+					let gcFile = self.gcsBucket.file(filename);
 					cwsOpts = {
 						predefinedAcl: self.options.acl || 'private',
 						metadata: {
@@ -133,10 +105,32 @@ GCStorage.prototype._handleFile = function (req, file, cb) {
 }
 
 GCStorage.prototype._removeFile = function _removeFile( req, file, cb ) {
-	var gcFile = self.gcsBucket.file(file.filename);
+	let gcFile = self.gcsBucket.file(file.filename);
 	gcFile.delete(cb);
 };
 
+GCStorage.prototype._getMimetype = function _getMimetype(req, file){
+  return new Promise(function(resolve, reject){
+    peek(file.stream, 4100, function(err, data, outStream){
+      let inspectData = fileTypeCheck(data)
+
+      if (inspectData) {
+        file.originalMimetype = file.mimetype
+        file.extension = inspectData.ext
+        file.mimetype = inspectData.mime
+        file.outStream = outStream
+      }
+
+      if (err){
+        reject(err)
+      } else {
+        resolve(true)
+      }
+
+    })
+  })
+}
+
 module.exports = function( opts ) {
-	return new GCStorage( opts );
+  return new GCStorage( opts );
 };
