@@ -56,7 +56,7 @@ function GCStorage (opts) {
 GCStorage.prototype._handleFile = function (req, file, cb) {
 	let self = this;
 
-  self.getMimetype(req, file)
+  self._getMimetype(req, file)
 	.then(function(){
 
 			self.preProcess(req, file, function (err) {
