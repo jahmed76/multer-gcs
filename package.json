@@ -19,7 +19,9 @@
   },
   "homepage": "https://github.com/jahmed76/multer-gcs#readme",
   "dependencies": {
-    "gcloud": "^0.36.0"
+    "buffer-peek-stream": "^1.0.1",
+    "file-type": "^6.1.0",
+    "google-cloud": "^0.56.0"
   },
   "devDependencies": {}
 }

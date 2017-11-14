@@ -20,8 +20,27 @@ var storage = gcs({
 	bucket      : 'bucket-name', // Required : bucket name to upload
 	projectId      : 'dummy-project', // Required : Google project ID
 	keyFilename : '/path/to/keyfile.json', // Required : JSON credentials file for Google Cloud Storage
-	acl : 'publicread' // Optional : Defaults to private
+	acl : 'publicread', // Optional : Defaults to private
+	preProcess: multerFilter // Optional, can be used to filter unwanted file types after determining true mimetype
 });
+
+// Optional preProcess filter
+var multerFilter = function(req, file, cb){
+    let allowedFileTypes = [
+      'png',
+      'jpg',
+      'jpeg',
+      'gif'
+    ]
+
+    let error = null
+
+    if (!allowedFileTypes.includes(file.extension)) {
+        error = "Invalid file type."
+    }
+
+    cb(error)
+}
 
 var gcsUpload = multer({ storage: storage });
 
@@ -32,7 +51,7 @@ app.post( '/upload', gcsUpload.single( 'file' ), function( req, res, next ) {
 });
 ```
 You can also use environment variables for multer-gcs parameters.
-```
+```javascript
 GCS_BUCKET='bucket-name'
 GCLOUD_PROJECT='dummy-project'
 GCS_KEYFILE='/path/to/keyfile.json'
