@@ -54,7 +54,7 @@ function GCStorage(opts) {
 }
 
 GCStorage.prototype._handleFile = function (req, file, cb) {
-  const self = this;
+  let self = this;
 
   self.getMimetype(req, file).then((file) => {
     self.preProcess(req, file, (err) => {
@@ -98,22 +98,22 @@ GCStorage.prototype._removeFile = function _removeFile(req, file, cb) {
   gcFile.delete(cb);
 };
 
-GCStorage.prototype.getMimetype = function getMimetype(req, file) {
-  const newFile = file;
+GCStorage.prototype.getMimetype = function (req, file) {
+  let newFile = file;
   return new Promise(((resolve, reject) => {
     peek(file.stream, 4100, (err, data, outStream) => {
-      if (err) {
-        reject(err);
-      } else {
-        const inspectData = fileTypeCheck(data);
-        if (inspectData) {
-          newFile.originalMimetype = file.mimetype;
-          newFile.extension = inspectData.ext;
-          newFile.mimetype = inspectData.mime;
-          newFile.outStream = outStream;
-        }
-        resolve(newFile);
+      if (err) reject(err);
+
+      const inspectData = fileTypeCheck(data);
+
+      if (inspectData) {
+        newFile.originalMimetype = file.mimetype;
+        newFile.extension = inspectData.ext;
+        newFile.mimetype = inspectData.mime;
+        newFile.outStream = outStream;
       }
+
+      resolve(newFile);
     });
   }));
 };
