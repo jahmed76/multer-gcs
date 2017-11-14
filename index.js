@@ -1,136 +1,123 @@
-let gcloud = require('google-cloud');
-let crypto = require( 'crypto' );
-let peek = require('buffer-peek-stream')
-let fileTypeCheck = require('file-type')
+const gcloud = require('google-cloud');
+const crypto = require('crypto');
+const peek = require('buffer-peek-stream');
+const fileTypeCheck = require('file-type');
 
-function getFilename( req, file, cb ) {
-	crypto.pseudoRandomBytes( 16, function ( err, raw ) {
-		cb( err, err ? undefined : raw.toString( 'hex' ));
-	});
+function getFilename(req, file, cb) {
+  crypto.pseudoRandomBytes(16, (err, raw) => {
+    cb(err, err ? undefined : raw.toString('hex'));
+  });
 }
 
-function getDestination( req, file, cb ) {
-	cb( null, '' );
+function getDestination(req, file, cb) {
+  cb(null, '');
 }
 
-function preProcess(req, file, cb){
-	cb(null, '')
+function preProcess(req, file, cb) {
+  cb(null, '');
 }
 
-function GCStorage (opts) {
-	this.getFilename = ( opts.filename || getFilename );
+function GCStorage(opts) {
+  this.getFilename = (opts.filename || getFilename);
 
-	if ( 'string' === typeof opts.destination ) {
-		this.getDestination = function( $0, $1, cb ) { cb( null, opts.destination ); }
-	} else {
-		this.getDestination = ( opts.destination || getDestination );
-	}
+  if (typeof opts.destination === 'string') {
+    this.getDestination = function ($0, $1, cb) { cb(null, opts.destination); };
+  } else {
+    this.getDestination = (opts.destination || getDestination);
+  }
 
-	this.preProcess = (opts.preProcess || preProcess)
+  this.preProcess = (opts.preProcess || preProcess);
 
-	opts.bucket = ( opts.bucket || process.env.GCS_BUCKET || null );
-	opts.projectId = opts.projectId || process.env.GCLOUD_PROJECT || null;
-	opts.keyFilename = opts.keyFilename || process.env.GCS_KEYFILE || null;
+  opts.bucket = (opts.bucket || process.env.GCS_BUCKET || null);
+  opts.projectId = opts.projectId || process.env.GCLOUD_PROJECT || null;
+  opts.keyFilename = opts.keyFilename || process.env.GCS_KEYFILE || null;
 
-	if ( ! opts.bucket ) {
-		throw new Error( 'You have to specify bucket for Google Cloud Storage to work.' );
-	}
+  if (!opts.bucket) {
+    throw new Error('You have to specify bucket for Google Cloud Storage to work.');
+  }
 
-	if ( ! opts.projectId ) {
-		throw new Error( 'You have to specify project id for Google Cloud Storage to work.' );
-	}
+  if (!opts.projectId) {
+    throw new Error('You have to specify project id for Google Cloud Storage to work.');
+  }
 
-	if ( ! opts.keyFilename ) {
-		throw new Error( 'You have to specify credentials key file for Google Cloud Storage to work.' );
-	}
+  if (!opts.keyFilename) {
+    throw new Error('You have to specify credentials key file for Google Cloud Storage to work.');
+  }
 
-	this.gcobj = gcloud.storage({
-		projectId: opts.projectId,
-		keyFilename: opts.keyFilename
-	});
+  this.gcobj = gcloud.storage({
+    projectId: opts.projectId,
+    keyFilename: opts.keyFilename,
+  });
 
-	this.gcsBucket = this.gcobj.bucket(opts.bucket);
-	this.options = opts;
+  this.gcsBucket = this.gcobj.bucket(opts.bucket);
+  this.options = opts;
 }
 
 GCStorage.prototype._handleFile = function (req, file, cb) {
-	let self = this;
+  const self = this;
 
-  self._getMimetype(req, file)
-	.then(function(){
+  self.getMimetype(req, file).then((file) => {
+    self.preProcess(req, file, (err) => {
+      if (err) {
+        return cb(err);
+      }
 
-			self.preProcess(req, file, function (err) {
+      self.getDestination(req, file, (err, destination) => {
+        if (err) {
+          return cb(err);
+        }
 
-			if (err) {
-				return cb(err)
-			}
+        self.getFilename(req, file, (err, filename) => {
+          filename += file.extension ? `.${file.extension}` : '';
+          if (err) {
+            return cb(err);
+          }
+          const gcFile = self.gcsBucket.file(filename);
+          const cwsOpts = {
+            predefinedAcl: self.options.acl || 'private',
+            metadata: {
+              contentType: file.mimetype,
+            },
+          };
 
-			self.getDestination(req, file, function (err, destination) {
-				if (err) {
-					return cb(err);
-				}
-
-				self.getFilename(req, file, function (err, filename) {
-					filename += file.extension ? `.${file.extension}` : ''
-					if (err) {
-						return cb(err);
-					}
-					let gcFile = self.gcsBucket.file(filename);
-					cwsOpts = {
-						predefinedAcl: self.options.acl || 'private',
-						metadata: {
-							contentType: file.mimetype
-						}
-					}
-
-					file.outStream.pipe(gcFile.createWriteStream(cwsOpts)).
-						on('error', function (err) {
-							return cb(err);
-						}).
-						on('finish', function (file) {
-							return cb(null, {
-								path: 'https://' + self.options.bucket +
-								'.storage.googleapis.com/' + filename,
-								filename: filename
-							});
-						});
-
-				});
-
-			});
-		});
-	}).catch(function(err){
-		return cb(err)
-	})
-}
-
-GCStorage.prototype._removeFile = function _removeFile( req, file, cb ) {
-	let gcFile = self.gcsBucket.file(file.filename);
-	gcFile.delete(cb);
+          file.outStream.pipe(gcFile.createWriteStream(cwsOpts))
+            .on('error', err => cb(err))
+            .on('finish', file => cb(null, {
+              path: `https://${self.options.bucket
+              }.storage.googleapis.com/${filename}`,
+              filename,
+            }));
+        });
+      });
+    });
+  }).catch(err => cb(err));
 };
 
-GCStorage.prototype._getMimetype = function _getMimetype(req, file){
-  return new Promise(function(resolve, reject){
-    peek(file.stream, 4100, function(err, data, outStream){
-      let inspectData = fileTypeCheck(data)
+GCStorage.prototype._removeFile = function _removeFile(req, file, cb) {
+  const gcFile = self.gcsBucket.file(file.filename);
+  gcFile.delete(cb);
+};
 
-      if (inspectData) {
-        file.originalMimetype = file.mimetype
-        file.extension = inspectData.ext
-        file.mimetype = inspectData.mime
-        file.outStream = outStream
-      }
-
-      if (err){
-        reject(err)
+GCStorage.prototype.getMimetype = function getMimetype(req, file) {
+  const newFile = file;
+  return new Promise(((resolve, reject) => {
+    peek(file.stream, 4100, (err, data, outStream) => {
+      if (err) {
+        reject(err);
       } else {
-        resolve(true)
+        const inspectData = fileTypeCheck(data);
+        if (inspectData) {
+          newFile.originalMimetype = file.mimetype;
+          newFile.extension = inspectData.ext;
+          newFile.mimetype = inspectData.mime;
+          newFile.outStream = outStream;
+        }
+        resolve(newFile);
       }
+    });
+  }));
+};
 
-    })
-  })
-}
-
-module.exports = function( opts ) {
-  return new GCStorage( opts );
+module.exports = function (opts) {
+  return new GCStorage(opts);
 };
